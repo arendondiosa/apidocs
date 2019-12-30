@@ -47,12 +47,18 @@ def reindent(string):
     return "\n".join(l.strip() for l in string.strip().split("\n"))
 
 
+def clean_multiple_white_spaces(string):
+    """
+    
+    """
+    return ' '.join(string.split())
+
+
 def pre_process(docstring):
     """
 
     """
     processed_text = []
-    processed_params = []
 
     if docstring:
         # Replace
@@ -62,17 +68,14 @@ def pre_process(docstring):
         text_splitted = trim_text.split('\n')
         new_line = ""
 
-        for idx, line in enumerate(text_splitted):
-            if not line:
+        for line in text_splitted:
+            if not line or ':param' in line or ':return' in line:
                 processed_text.append(new_line)
                 new_line = ""
-            if ':return' in line or ':param' in line:
-                processed_params.append(new_line)
-                new_line = ""
+            
+            new_line += line + " "
 
-            new_line += " " + line
-
-    return "\n".join(processed_text + processed_params)
+    return "\n".join(processed_text)
 
 
 def parse_docstring(docstring):
@@ -87,11 +90,16 @@ def parse_docstring(docstring):
     """
 
     short_description = long_description = returns = ""
+    params_type_list = ['String', 'string', 'Str', 'str',
+                   'Integer', 'integer', 'Int', 'int',
+                   'Boolean, boolean, Bool, bool',
+                   'Dict', 'dict', 'Dictionary', 'dictionary',
+                   'List', 'list', 'Lst', 'lst']
     params = []
 
     if docstring:
-        docstring = trim(docstring)
-
+        docstring = pre_process(trim(docstring))
+        
         lines = docstring.split("\n", 1)
         short_description = lines[0]
 
@@ -106,15 +114,37 @@ def parse_docstring(docstring):
                 params_returns_desc = long_description[long_desc_end:].strip()
                 long_description = long_description[:long_desc_end].rstrip()
 
+            # Params
             if params_returns_desc:
-                params = [
-                    {"name": name, "doc": trim(doc)}
-                    for name, doc in PARAM_REGEX.findall(params_returns_desc)
-                ]
+                params = []
+
+                for name, doc in PARAM_REGEX.findall(params_returns_desc):
+                    example = ""
+
+                    if 'Ie,' in doc or 'Ie.' in doc:
+                        doc = doc.replace('Ie.', 'Ie,')
+                        doc, example = doc.split('Ie,')
+                        example = example.replace('\n', '') # Clean end of line
+                        example = clean_multiple_white_spaces(example) # Clean multiple white spaces
+
+                    # Define params type
+                    param_type = doc.split(' ', 1)[0]
+
+                    for char in ['.', ',']:
+                        if char in param_type:
+                            param_type = param_type.replace(char, '')
+
+                    if param_type in params_type_list:
+                        doc = ' '.join(doc.split(' ')[1:])
+                    else:
+                        param_type = ''
+
+                    params.append({"name": name, "doc": trim(doc), "example": example, "type": param_type})
 
                 match = RETURNS_REGEX.search(params_returns_desc)
                 if match:
                     returns = reindent(match.group("doc"))
+                    returns = clean_multiple_white_spaces(returns)
 
     return {
         "short_description": short_description,
@@ -144,7 +174,10 @@ request documentservice to upload the file
     :param stipulation_type: String, stipulation type. Ie, "STANDARD"
     :param stipulation_id: Integer, stipulation identifier. Ie. 1
     :param application_id: Integer, unique application identifier. Ie, 2
-    :param owner_data: Dict. data from an owner. Ie, { owner_id: 10, owner_type: 'OWNER' }
+    :param owner_data: Dict. data from an owner. Ie, { 
+            owner_id: 10, 
+            owner_type: 'OWNER' 
+        }
     :param is_credit_memo_file: Boolean. indicates if the file comes from credit memo. Ie, True
     :param custom_document_type: str, the custom document type if it is not related to application. Ie. 'payments'
     :param origin: String, origin of the call. Ie, 'PP'
@@ -155,5 +188,4 @@ request documentservice to upload the file
         }
 """
 
-print(pre_process(data))
-# pre_process(data)
+print(parse_docstring(data))
