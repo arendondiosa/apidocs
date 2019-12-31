@@ -48,15 +48,18 @@ def reindent(string):
 
 
 def clean_multiple_white_spaces(string):
-    """
-    
-    """
     return ' '.join(string.split())
 
 
 def pre_process(docstring):
-    """
-
+    """Parse the docstring into its components.
+    :returns: a dictionary of form
+              {
+                  "short_description": ...,
+                  "long_description": ...,
+                  "params": [{"name": ..., "doc": ..., "example": ..., "type": ...}, ...],
+                  "returns": ...
+              }
     """
     processed_text = []
 
@@ -79,14 +82,16 @@ def pre_process(docstring):
 
 
 def parse_docstring(docstring):
-    """Parse the docstring into its components.
-    :returns: a dictionary of form
-              {
-                  "short_description": ...,
-                  "long_description": ...,
-                  "params": [{"name": ..., "doc": ...}, ...],
-                  "returns": ...
-              }
+    """
+    Parse the docstring into its components.
+    :docstring: String, docstring content
+    :returns: a dictionary of form. Ie,
+        {
+            "short_description": ...,
+            "long_description": ...,
+            "params": [{"name": ..., "doc": ..., "example": ..., "type": ...}, ...],
+            "returns": ...
+        }
     """
 
     short_description = long_description = returns = ""
@@ -121,11 +126,12 @@ def parse_docstring(docstring):
                 for name, doc in PARAM_REGEX.findall(params_returns_desc):
                     example = ""
 
-                    if 'Ie,' in doc or 'Ie.' in doc:
-                        doc = doc.replace('Ie.', 'Ie,')
-                        doc, example = doc.split('Ie,')
-                        example = example.replace('\n', '') # Clean end of line
-                        example = clean_multiple_white_spaces(example) # Clean multiple white spaces
+                    for word in ['Ie.', 'Ie,', 'ie.', 'ie', 'IE.', 'IE']:
+                        if word in doc:
+                            doc = doc.replace(word, 'Ie,')
+                            doc, example = doc.split('Ie,')
+                            example = example.replace('\n', '') # Clean end of line
+                            example = clean_multiple_white_spaces(example) # Clean multiple white spaces
 
                     # Define params type
                     param_type = doc.split(' ', 1)[0]
@@ -141,10 +147,21 @@ def parse_docstring(docstring):
 
                     params.append({"name": name, "doc": trim(doc), "example": example, "type": param_type})
 
+                # Return
                 match = RETURNS_REGEX.search(params_returns_desc)
                 if match:
                     returns = reindent(match.group("doc"))
-                    returns = clean_multiple_white_spaces(returns)
+                    return_doc = ''
+                    return_example = ''
+
+                    for word in ['Ie.', 'Ie,', 'ie.', 'ie', 'IE.', 'IE']:
+                        if word in returns:
+                            returns = returns.replace(word, 'Ie,')
+                            return_doc, return_example = returns.split('Ie,')
+                            return_example = return_example.replace('\n', '') # Clean end of line
+                            return_example = clean_multiple_white_spaces(return_example) # Clean multiple white spaces
+
+                    returns = { "doc": return_doc, "example": return_example }
 
     return {
         "short_description": short_description,
@@ -158,34 +175,48 @@ def docstring_to_yaml(docstring_dict):
     """
 
     """
+    yaml = ''
 
 
 
-data = """
-Generate and unique name for the document, store the file locally, then
-request documentservice to upload the file
+    return docstring_dict
 
-long description
-Generate and unique name for the document, store the file locally, then
-request documentservice to upload the file
-    :param token: String, authentication token. Ie, "kj2xlj3lkjlj"
-    :param client_id: ID of the current client, Ie. 1
-    :param document_file: Document to be uploaded. FileStorage
-    :param stipulation_type: String, stipulation type. Ie, "STANDARD"
-    :param stipulation_id: Integer, stipulation identifier. Ie. 1
-    :param application_id: Integer, unique application identifier. Ie, 2
-    :param owner_data: Dict. data from an owner. Ie, { 
-            owner_id: 10, 
-            owner_type: 'OWNER' 
-        }
-    :param is_credit_memo_file: Boolean. indicates if the file comes from credit memo. Ie, True
-    :param custom_document_type: str, the custom document type if it is not related to application. Ie. 'payments'
-    :param origin: String, origin of the call. Ie, 'PP'
-    :param document_form: Document form data. DocumentForm
-    :return: the generated File data. Ie, {
-            owner_id: 10, 
-            owner_type: 'OWNER'
-        }
-"""
 
-print(parse_docstring(data))
+def main():
+    """
+    Main function
+    """
+    data = """
+    Generate and unique name for the document, store the file locally, then
+    request documentservice to upload the file
+
+    long description
+    Generate and unique name for the document, store the file locally, then
+    request documentservice to upload the file
+        :param token: String, authentication token. Ie, "kj2xlj3lkjlj"
+        :param client_id: ID of the current client, Ie. 1
+        :param document_file: Document to be uploaded. FileStorage
+        :param stipulation_type: String, stipulation type. Ie, "STANDARD"
+        :param stipulation_id: Integer, stipulation identifier. Ie. 1
+        :param application_id: Integer, unique application identifier. Ie, 2
+        :param owner_data: Dict. data from an owner. Ie, 
+            { 
+                owner_id: 10, 
+                owner_type: 'OWNER' 
+            }
+        :param is_credit_memo_file: Boolean. indicates if the file comes from credit memo. Ie, True
+        :param custom_document_type: str, the custom document type if it is not related to application. Ie. 'payments'
+        :param origin: String, origin of the call. Ie, 'PP'
+        :param document_form: Document form data. DocumentForm
+        :return: the generated File data. Ie, {
+                owner_id: 10, 
+                owner_type: 'OWNER'
+            }
+    """
+
+    docstring = parse_docstring(data)
+    print(docstring_to_yaml(docstring))
+
+
+if __name__== "__main__":
+  main()
