@@ -1,9 +1,10 @@
 # https://github.com/openstack/rally/blob/7153e0cbc5b0e6433313a3bc6051b2c0775d3804/rally/common/plugin/info.py#L63-L110
 
+import os
 import re
 import sys
 
-PARAM_OR_RETURNS_REGEX = re.compile(":(?:param|returns)")
+PARAM_OR_RETURNS_REGEX = re.compile(":(?:param|return)")
 RETURNS_REGEX = re.compile(":return: (?P<doc>.*)", re.S)
 PARAM_REGEX = re.compile(":param (?P<name>[\*\w]+): (?P<doc>.*?)"
                          "(?:(?=:param)|(?=:return)|(?=:raises)|\Z)", re.S)
@@ -75,7 +76,7 @@ def pre_process(docstring):
             if not line or ':param' in line or ':return' in line:
                 processed_text.append(new_line)
                 new_line = ""
-            
+
             new_line += line + " "
 
     return "\n".join(processed_text)
@@ -96,15 +97,16 @@ def parse_docstring(docstring):
 
     short_description = long_description = returns = ""
     params_type_list = ['String', 'string', 'Str', 'str',
-                   'Integer', 'integer', 'Int', 'int',
-                   'Boolean, boolean, Bool, bool',
-                   'Dict', 'dict', 'Dictionary', 'dictionary',
-                   'List', 'list', 'Lst', 'lst']
+                        'Integer', 'integer', 'Int', 'int',
+                        'Boolean, boolean, Bool, bool',
+                        'Dict', 'dict', 'Dictionary', 'dictionary',
+                        'List', 'list', 'Lst', 'lst',
+                        'JSON', 'Json', 'json']
     params = []
 
     if docstring:
         docstring = pre_process(trim(docstring))
-        
+
         lines = docstring.split("\n", 1)
         short_description = lines[0]
 
@@ -126,12 +128,18 @@ def parse_docstring(docstring):
                 for name, doc in PARAM_REGEX.findall(params_returns_desc):
                     example = ""
 
-                    for word in ['Ie.', 'Ie,', 'ie.', 'ie', 'IE.', 'IE']:
+                    for word in ['Ie ', 'Ie.', 'Ie,', 'ie.', 'ie', 'IE.', 'IE']:
                         if word in doc:
                             doc = doc.replace(word, 'Ie,')
                             doc, example = doc.split('Ie,')
-                            example = example.replace('\n', '') # Clean end of line
-                            example = clean_multiple_white_spaces(example) # Clean multiple white spaces
+                            example = example.replace(
+                                '\n', '')  # Clean end of line
+                            example = clean_multiple_white_spaces(
+                                example)  # Clean multiple white spaces
+                            example = example.replace('...', '')
+                            break
+
+                    doc = doc.replace('\n', '')
 
                     # Define params type
                     param_type = doc.split(' ', 1)[0]
@@ -145,7 +153,8 @@ def parse_docstring(docstring):
                     else:
                         param_type = ''
 
-                    params.append({"name": name, "doc": trim(doc), "example": example, "type": param_type})
+                    params.append({"name": name, "doc": trim(
+                        doc), "example": example, "type": param_type})
 
                 # Return
                 match = RETURNS_REGEX.search(params_returns_desc)
@@ -154,14 +163,31 @@ def parse_docstring(docstring):
                     return_doc = ''
                     return_example = ''
 
-                    for word in ['Ie.', 'Ie,', 'ie.', 'ie', 'IE.', 'IE']:
+                    for word in ['Ie ', 'Ie.', 'Ie,', 'ie.', 'ie', 'IE.', 'IE']:
                         if word in returns:
                             returns = returns.replace(word, 'Ie,')
                             return_doc, return_example = returns.split('Ie,')
-                            return_example = return_example.replace('\n', '') # Clean end of line
-                            return_example = clean_multiple_white_spaces(return_example) # Clean multiple white spaces
+                            return_example = return_example.replace(
+                                '\n', '')  # Clean end of line
+                            return_example = clean_multiple_white_spaces(
+                                return_example)  # Clean multiple white spaces
+                            return_example = return_example.replace('...', '')
+                            break
 
-                    returns = { "doc": return_doc, "example": return_example }
+                    # Define return type
+                    return_type = return_doc.split(' ', 1)[0]
+
+                    for char in ['.', ',']:
+                        if char in return_type:
+                            return_type = return_type.replace(char, '')
+
+                    if return_type in params_type_list:
+                        return_doc = ' '.join(return_doc.split(' ')[1:])
+                    else:
+                        return_type = ''
+
+                    returns = {"doc": trim(return_doc),
+                               "example": return_example, "type": return_type}
 
     return {
         "short_description": short_description,
@@ -171,52 +197,82 @@ def parse_docstring(docstring):
     }
 
 
-def docstring_to_yaml(docstring_dict):
+def add_tabs_to_yaml(yaml_string, tab_size):
     """
 
+    :param yaml_string: String, 
+    :param tab_size: Integer, 
+    :return: 
     """
+    tab = '    ' * tab_size
+
+    yaml_string = yaml_string.replace('***', tab)
+    return yaml_string
+
+
+def docstring_to_yaml(docstring_dict, tab_size=1):
+    """
+
+    :param docstring_dict: Dict, 
+    :param tab_size: Integer,
+    :return String,
+    """
+    parameters_yaml = ''
+    responses_yaml = ''
     yaml = ''
+    is_params_enabled = 'params' in docstring_dict and docstring_dict['params']
+    is_returns_enabled = 'returns' in docstring_dict and docstring_dict['returns']
 
+    if 'short_description' in docstring_dict and docstring_dict[
+            'short_description']:
+        yaml += '\n***' + docstring_dict['short_description']
 
+    if 'long_description' in docstring_dict and docstring_dict[
+            'long_description']:
+        yaml += '\n***' + docstring_dict['long_description']
 
-    return docstring_dict
+    if is_params_enabled or is_returns_enabled:
+        yaml += '\n***---'
 
+    if is_params_enabled:
+        params = docstring_dict['params']
+        parameters_yaml = '***parameters:'
 
-def main():
-    """
-    Main function
-    """
-    data = """
-    Generate and unique name for the document, store the file locally, then
-    request documentservice to upload the file
+        for param in params:
+            # Name
+            if 'name' in param and param['name']:
+                parameters_yaml += '\n***  - name: ' + param['name']
+            # Origin
+            parameters_yaml += '\n***    in: path '
+            # Description
+            if 'doc' in param and param['doc']:
+                parameters_yaml += '\n***    description: ' + \
+                    param['doc']
+            # Required?
+            parameters_yaml += '\n***    required: true'
+            # Type
+            if 'type' in param and param['type']:
+                parameters_yaml += '\n***    type: ' + param['type']
+            # Example
+            if 'example' in param and param['example']:
+                parameters_yaml += '\n***    default: ' + \
+                    param['example']
 
-    long description
-    Generate and unique name for the document, store the file locally, then
-    request documentservice to upload the file
-        :param token: String, authentication token. Ie, "kj2xlj3lkjlj"
-        :param client_id: ID of the current client, Ie. 1
-        :param document_file: Document to be uploaded. FileStorage
-        :param stipulation_type: String, stipulation type. Ie, "STANDARD"
-        :param stipulation_id: Integer, stipulation identifier. Ie. 1
-        :param application_id: Integer, unique application identifier. Ie, 2
-        :param owner_data: Dict. data from an owner. Ie, 
-            { 
-                owner_id: 10, 
-                owner_type: 'OWNER' 
-            }
-        :param is_credit_memo_file: Boolean. indicates if the file comes from credit memo. Ie, True
-        :param custom_document_type: str, the custom document type if it is not related to application. Ie. 'payments'
-        :param origin: String, origin of the call. Ie, 'PP'
-        :param document_form: Document form data. DocumentForm
-        :return: the generated File data. Ie, {
-                owner_id: 10, 
-                owner_type: 'OWNER'
-            }
-    """
+        yaml += '\n' + parameters_yaml
 
-    docstring = parse_docstring(data)
-    print(docstring_to_yaml(docstring))
+    if is_returns_enabled:
+        returns = docstring_dict['returns']
+        responses_yaml = '***responses:\n***  200:'
 
+        if 'doc' in returns and returns['doc']:
+            responses_yaml += '\n***    description: ' + returns['doc']
 
-if __name__== "__main__":
-  main()
+        if 'example' in returns and returns['example']:
+            responses_yaml += '\n***    example: ' + returns['example']
+
+        if 'type' in returns and returns['type']:
+            responses_yaml += '\n***    type: ' + returns['type']
+
+        yaml += '\n' + responses_yaml
+
+    return add_tabs_to_yaml(yaml, tab_size)
