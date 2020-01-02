@@ -1,4 +1,6 @@
 from docstring_parser import parse_docstring, docstring_to_yaml
+from utils import file_dicstring_to_yaml
+
 
 def main():
     """
@@ -25,10 +27,8 @@ def main():
             }
         """
 
-    docstring = parse_docstring(data)
-    # print(docstring)
-    print(docstring_to_yaml(docstring))
-
+    file_dicstring_to_yaml(
+        '/Users/rendon/LendingFront/originationservice/app/api/v1_1/resources/application_search.py')
 
 if __name__ == "__main__":
   main()

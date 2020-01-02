@@ -225,7 +225,7 @@ def docstring_to_yaml(docstring_dict, tab_size=1):
 
     if 'short_description' in docstring_dict and docstring_dict[
             'short_description']:
-        yaml += '\n***' + docstring_dict['short_description']
+        yaml += '***' + docstring_dict['short_description']
 
     if 'long_description' in docstring_dict and docstring_dict[
             'long_description']:
@@ -274,5 +274,6 @@ def docstring_to_yaml(docstring_dict, tab_size=1):
             responses_yaml += '\n***    type: ' + returns['type']
 
         yaml += '\n' + responses_yaml
+    yaml += '\n'
 
     return add_tabs_to_yaml(yaml, tab_size)
