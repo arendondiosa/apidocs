@@ -1,5 +1,8 @@
 # https://stackoverflow.com/questions/5389507/iterating-over-every-two-elements-in-a-list
+from os.path import isfile, join
 from itertools import izip
+from glob import glob
+
 import re
 
 from docstring_parser import parse_docstring, docstring_to_yaml
@@ -18,7 +21,7 @@ def get_tab_size(line):
     return count
 
 
-def file_dicstring_to_yaml(input_file, output_file=None):
+def file_docstring_to_yaml(input_file, output_file=None):
     """
 
     """
@@ -57,3 +60,13 @@ def file_dicstring_to_yaml(input_file, output_file=None):
     text_file = open(output_file, "w")
     text_file.write(output_data)
     text_file.close()
+
+
+def folder_docstring_to_yaml(path):
+    """
+
+    """
+    files = glob(path + "/*.py")
+
+    for file in files:
+        file_docstring_to_yaml(file)

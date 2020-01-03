@@ -1,5 +1,5 @@
 from docstring_parser import parse_docstring, docstring_to_yaml
-from utils import file_dicstring_to_yaml
+from utils import file_docstring_to_yaml, folder_docstring_to_yaml
 
 
 def main():
@@ -27,8 +27,11 @@ def main():
             }
         """
 
-    file_dicstring_to_yaml(
-        '/Users/rendon/LendingFront/originationservice/app/api/v1_1/resources/application_search.py')
+    # file_docstring_to_yaml(
+    #     '/Users/rendon/LendingFront/originationservice/app/api/v1_1/resources/application_search.py')
+    folder_docstring_to_yaml(
+        '/Users/rendon/LendingFront/originationservice/app/api/v1_1/resources')
+
 
 if __name__ == "__main__":
   main()
