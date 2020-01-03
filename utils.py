@@ -62,6 +62,61 @@ def file_docstring_to_yaml(input_file, output_file=None):
     text_file.close()
 
 
+def comment_block(block_string, comment=True):
+    """
+
+    """
+    block = block_string.split('\n')
+    commented_block = []
+
+    if comment:
+        commented_block = ['# ' + line for line in block if line]
+    else:
+        commented_block = [line.replace('# ', '') for line in block if line]
+
+    commented_block = '\n'.join(commented_block) + '\n'
+    return commented_block
+
+
+def display_docs_file(input_file, output_file=None):
+    """
+
+    """
+    content = []
+    http_rules = ['get', 'post', 'put', 'delete']
+    output_data = ''
+
+    with open(input_file, 'r') as f:
+        content = f.readlines()
+
+    content = [x for x in content]
+
+    docstring_indexes = [e for e, line in enumerate(content) if '"""' in line]
+
+    last_index = 0
+    # Get sublist with docstrings
+    for init, end in grouped(docstring_indexes, 2):
+        docstring = content[init + 1:end]
+        docstring = ''.join(docstring)  # Docstring to string
+
+        for http_rule in http_rules:
+            if ('def ' + http_rule + '(') in content[init - 1]:
+                docstring = comment_block(docstring)
+
+        output_data += ''.join(content[last_index:init + 1])
+        output_data += docstring
+
+        last_index = end
+    output_data += ''.join(content[last_index:len(content)])
+
+    if output_file is None:
+        output_file = input_file
+
+    text_file = open(output_file, "w")
+    text_file.write(output_data)
+    text_file.close()
+
+
 def folder_docstring_to_yaml(path):
     """
 
@@ -70,3 +125,13 @@ def folder_docstring_to_yaml(path):
 
     for file in files:
         file_docstring_to_yaml(file)
+
+
+def folder_display_docs(path):
+    """
+
+    """
+    files = glob(path + "/*.py")
+
+    for file in files:
+        display_docs_file(file)
