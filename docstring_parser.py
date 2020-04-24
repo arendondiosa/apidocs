@@ -45,16 +45,36 @@ def trim(docstring):
 
 
 def reindent(string):
+    """
+    Add the same tab size for each line in a block of lines
+    :param string: String, Line to apply the format. Ie, 
+        "
+            This is a block
+                of lines with
+          different tabs
+        "
+    :return: String, Line with format. Ie, 
+        "
+            This is a block
+            of lines with
+            different tabs
+        "
+    """
     return "\n".join(l.strip() for l in string.strip().split("\n"))
 
 
 def clean_multiple_white_spaces(string):
+    """
+    Merge multiple white spaces in only one
+    :param string: String, Line to apply the format. Ie, "   some    string with   spaces"
+    :return: String, Line with format. Ie, " some string with spaces"
+    """
     return ' '.join(string.split())
 
 
 def pre_process(docstring):
     """Parse the docstring into its components.
-    :returns: a dictionary of form
+    :return: a dictionary with format
               {
                   "short_description": ...,
                   "long_description": ...,
@@ -85,8 +105,8 @@ def pre_process(docstring):
 def parse_docstring(docstring):
     """
     Parse the docstring into its components.
-    :docstring: String, docstring content
-    :returns: a dictionary of form. Ie,
+    :parmam docstring: String, docstring content
+    :return: a dictionary of form. Ie,
         {
             "short_description": ...,
             "long_description": ...,
@@ -199,10 +219,32 @@ def parse_docstring(docstring):
 
 def add_tabs_to_yaml(yaml_string, tab_size):
     """
-
-    :param yaml_string: String, 
-    :param tab_size: Integer, 
-    :return: 
+    Add tabs for each line in a block of strings
+    :param yaml_string: String, text with yaml format. Ie, 
+        "
+        Create lead owners and create lead guarantors person if the client has the property active
+        ---
+        parameters:
+         - name: client_id
+           in: path
+           description: Client identifier.
+           required: true
+           type: int
+           default: 3
+        "
+    :param tab_size: Integer, Tab size. Ie, 1
+    :return: String, text yaml with tab size added. Ie, 
+        "
+            Create lead owners and create lead guarantors person if the client has the property active
+            ---
+            parameters:
+            - name: client_id
+            in: path
+            description: Client identifier.
+            required: true
+            type: int
+            default: 3
+        "
     """
     tab = '    ' * tab_size
 
@@ -212,10 +254,27 @@ def add_tabs_to_yaml(yaml_string, tab_size):
 
 def docstring_to_yaml(docstring_dict, tab_size=1):
     """
-
-    :param docstring_dict: Dict, 
-    :param tab_size: Integer,
-    :return String,
+    Transform a docstring in yaml format
+    :param docstring_dict: Dict, Docstring Ie,
+        {
+            "short_description": ...,
+            "long_description": ...,
+            "params": [{"name": ..., "doc": ..., "example": ..., "type": ...}, ...],
+            "returns": ...
+        }
+    :param tab_size: Integer, Tab size. Ie, 1
+    :return String, docstring in yaml format Ie,
+        "
+        Create lead owners and create lead guarantors person if the client has the property active 
+        ---
+        parameters:
+        - name: client_id
+           in: path 
+           description: Client identifier.
+           required: true
+           type: int
+           default: 3
+        "
     """
     parameters_yaml = ''
     responses_yaml = ''
